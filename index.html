@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UrbanGuard — City-Scale Civic Intelligence Platform</title>
+  
+  <!-- CSS Stylesheets -->
+  <link rel="stylesheet" href="./index.css">
+  
+  <!-- FontAwesome for Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Leaflet.js CSS for Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
+        crossorigin="" />
+</head>
+<body>
+
+  <div id="app-layout">
+    
+    <!-- Sidebar Navigation -->
+    <aside id="app-sidebar">
+      <div class="brand">
+        <i class="fa-solid fa-shield-halved"></i>
+        <h1>Urban<span>Guard</span></h1>
+      </div>
+      
+      <ul class="nav-links">
+        <li class="nav-item active" data-view="dashboard">
+          <button><i class="fa-solid fa-chart-line"></i> Dashboard</button>
+        </li>
+        <li class="nav-item" data-view="feed">
+          <button><i class="fa-solid fa-list-check"></i> Report Feed</button>
+        </li>
+        <li class="nav-item" data-view="map">
+          <button><i class="fa-solid fa-map-location-dot"></i> Live Zone Map</button>
+        </li>
+        <li class="nav-item" data-view="ai-agents">
+          <button><i class="fa-solid fa-robot"></i> AI Agent Center</button>
+        </li>
+        <li class="nav-item" data-view="contacts">
+          <button><i class="fa-solid fa-phone-volume"></i> Emergency Contacts</button>
+        </li>
+        <li class="nav-item" data-view="impact">
+          <button><i class="fa-solid fa-chart-simple"></i> Impact Dashboard</button>
+        </li>
+        <li class="nav-item" data-view="insights">
+          <button><i class="fa-solid fa-brain"></i> Predictive Insights</button>
+        </li>
+        <li class="nav-item" data-view="rewards">
+          <button><i class="fa-solid fa-trophy"></i> Rewards & Leaderboard</button>
+        </li>
+        <li class="nav-item" data-view="report-issue" style="margin-top: 12px;">
+          <button style="background: var(--color-primary); color: white; justify-content: center; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.25);">
+            <i class="fa-solid fa-plus"></i> Submit Issue
+          </button>
+        </li>
+      </ul>
+      
+      <!-- User Profile Widget (Sidebar Footer) -->
+      <div class="user-profile-widget">
+        <div class="profile-summary">
+          <div class="profile-avatar" id="widget-user-avatar">YO</div>
+          <div class="profile-info">
+            <h3 id="widget-user-name">You</h3>
+            <span id="widget-user-title">Citizen Responder</span>
+          </div>
+        </div>
+        <div class="profile-level-progress">
+          <div class="level-text">
+            <span id="widget-user-level">Level 4</span>
+            <span id="widget-user-xp">720 / 850 XP</span>
+          </div>
+          <div class="level-bar-container">
+            <div class="level-bar-fill" id="widget-user-xp-bar" style="width: 84.7%;"></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+    
+    <!-- Main Content Area -->
+    <main>
+      <header>
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <button class="mobile-menu-toggle" id="sidebar-toggle">
+            <i class="fa-solid fa-bars"></i>
+          </button>
+          <div class="header-title">
+            <h2 id="current-view-title">Dashboard Overview</h2>
+          </div>
+        </div>
+        
+        <div class="header-actions">
+          <button class="theme-toggle" id="theme-toggle-btn" aria-label="Toggle dark/light mode">
+            <i class="fa-solid fa-moon"></i>
+          </button>
+          <div class="notification-bell" id="notification-trigger">
+            <i class="fa-solid fa-bell"></i>
+            <div class="notification-badge"></div>
+          </div>
+        </div>
+      </header>
+      
+      <!-- VIEW: Dashboard -->
+      <section id="view-dashboard" class="view-container active">
+        <!-- Metrics Grid -->
+        <div class="metrics-grid">
+          <div class="metric-card primary">
+            <div class="metric-info">
+              <h4>Total Incidents</h4>
+              <div class="metric-val" id="metric-total-issues">12</div>
+            </div>
+            <div class="icon-wrapper">
+              <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+          </div>
+          
+          <div class="metric-card success">
+            <div class="metric-info">
+              <h4>Resolution Rate</h4>
+              <div class="metric-val" id="metric-resolution-rate">85%</div>
+            </div>
+            <div class="icon-wrapper">
+              <i class="fa-solid fa-circle-check"></i>
+            </div>
+          </div>
+          
+          <div class="metric-card warning">
+            <div class="metric-info">
+              <h4>Active Streak</h4>
+              <div class="metric-val" id="metric-user-streak">5 Days</div>
+            </div>
+            <div class="icon-wrapper">
+              <i class="fa-solid fa-fire"></i>
+            </div>
+          </div>
+          
+          <div class="metric-card purple">
+            <div class="metric-info">
+              <h4>Verifications</h4>
+              <div class="metric-val" id="metric-user-verifications">12</div>
+            </div>
+            <div class="icon-wrapper">
+              <i class="fa-solid fa-check-double"></i>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Charts Layout Grid -->
+        <div class="dashboard-grid">
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3>Monthly Report Trend</h3>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="trendChart"></canvas>
+            </div>
+          </div>
+          
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3>Issues by Category</h3>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="categoryChart"></canvas>
+            </div>
+          </div>
+        </div>
+        
+        <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr;">
+          <!-- District Stats -->
+          <div class="list-panel" style="max-height: 400px;">
+            <h3>District Overview</h3>
+            <div class="list-items" id="dashboard-district-list">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+          
+          <!-- Recent Critical Alerts -->
+          <div class="list-panel" style="max-height: 400px;">
+            <h3>Critical & Active Issues</h3>
+            <div class="list-items" id="dashboard-critical-list">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <!-- VIEW: Report Feed -->
+      <section id="view-feed" class="view-container">
+        <div class="feed-header">
+          <div class="search-bar">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="feed-search-input" placeholder="Search issues, zones, descriptions...">
+          </div>
+          
+          <div class="filters-wrapper">
+            <select class="filter-select" id="filter-category">
+              <option value="all">All Categories</option>
+              <!-- Populated by JS -->
+            </select>
+            
+            <select class="filter-select" id="filter-status">
+              <option value="all">All Statuses</option>
+              <option value="reported">Reported</option>
+              <option value="verified">Verified</option>
+              <option value="in_progress">In Progress</option>
+              <option value="resolved">Resolved</option>
+            </select>
+            
+            <select class="filter-select" id="filter-priority">
+              <option value="all">All Priorities</option>
+              <option value="critical">Critical</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="issues-grid" id="feed-issues-grid">
+          <!-- Rendered via JS -->
+        </div>
+      </section>
+      
+      <!-- VIEW: Live Zone Map -->
+      <section id="view-map" class="view-container">
+        <div style="position: relative; width: 100%; height: 550px;">
+          <div id="map-container" style="height: 100%;"></div>
+          <!-- Floating Map Layer Controls -->
+          <div class="map-layer-controls">
+            <button class="layer-btn active" data-layer="dark"><i class="fa-solid fa-moon"></i> Dark Street</button>
+            <button class="layer-btn" data-layer="light"><i class="fa-solid fa-sun"></i> Light Street</button>
+            <button class="layer-btn" data-layer="satellite"><i class="fa-solid fa-earth-americas"></i> Satellite</button>
+          </div>
+        </div>
+      </section>
+      
+      <!-- VIEW: AI Agent Center -->
+      <section id="view-ai-agents" class="view-container">
+        <div style="margin-bottom: 24px;">
+          <p style="color: var(--text-secondary); font-size: 14.5px;">
+            <i class="fa-solid fa-circle-nodes" style="color: var(--color-primary); margin-right: 6px;"></i>
+            Run multi-agent collaboration loops simulating concepts of <strong>CrewAI</strong> and <strong>LangGraph</strong>. Watch agents collaborate to categorize, cross-check duplicates, and assign SLA schedules.
+          </p>
+        </div>
+
+        <!-- Gemini API Key configuration card -->
+        <div class="api-key-config-card" style="margin-bottom: 24px; padding: 20px; background-color: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--border-radius-md); backdrop-filter: blur(24px); box-shadow: var(--shadow-sm); display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+          <div class="api-key-icon-wrapper" style="width: 44px; height: 44px; border-radius: var(--border-radius-sm); background-color: rgba(234, 179, 8, 0.1); color: var(--color-warning); display: flex; align-items: center; justify-content: center; font-size: 20px;">
+            <i class="fa-solid fa-key"></i>
+          </div>
+          <div class="api-key-input-group" style="flex-grow: 1; display: flex; flex-direction: column; gap: 6px; min-width: 250px;">
+            <label for="gemini-api-key" style="font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Google AI Studio Gemini API Key (Optional)</label>
+            <input type="password" id="gemini-api-key" placeholder="Paste your API key here to enable live AI responses..." style="padding: 10px 14px; background-color: var(--bg-secondary); border: 1px solid var(--card-border); border-radius: var(--border-radius-sm); color: var(--text-primary); outline: none; font-size: 13.5px; width: 100%;">
+          </div>
+          <div class="api-key-actions" style="display: flex; gap: 10px; align-self: flex-end;">
+            <button class="btn-submit" id="btn-save-key" style="width: auto; padding: 10px 20px; font-size: 13.5px; height: 38px; display: flex; align-items: center; justify-content: center; margin-top: 0;">Save Key</button>
+            <button class="btn-secondary" id="btn-clear-key" style="padding: 0 16px; font-size: 13.5px; height: 38px; display: flex; align-items: center; justify-content: center;">Clear</button>
+          </div>
+        </div>
+        
+        <div class="agent-center-layout">
+          <!-- Left: Agent Crew Status -->
+          <div class="agent-crew-panel">
+            <h3>Active AI Agent Crew</h3>
+            <div class="agent-card categorizer" id="crew-agent-cat">
+              <div class="agent-avatar"><i class="fa-solid fa-tags"></i></div>
+              <div class="agent-details">
+                <h4>Classifier Agent</h4>
+                <span>Goal: Classify category & severity</span>
+              </div>
+              <div class="agent-status-dot idle"></div>
+            </div>
+            
+            <div class="agent-card dispatcher" id="crew-agent-disp">
+              <div class="agent-avatar"><i class="fa-solid fa-truck-ramp-box"></i></div>
+              <div class="agent-details">
+                <h4>SLA Dispatch Agent</h4>
+                <span>Goal: Calculate SLA & assign ward</span>
+              </div>
+              <div class="agent-status-dot idle"></div>
+            </div>
+            
+            <div class="agent-card moderator" id="crew-agent-mod">
+              <div class="agent-avatar"><i class="fa-solid fa-magnifying-glass-location"></i></div>
+              <div class="agent-details">
+                <h4>Moderator Agent</h4>
+                <span>Goal: Check duplicates & coordinate</span>
+              </div>
+              <div class="agent-status-dot idle"></div>
+            </div>
+          </div>
+          
+          <!-- Right: Interactive Console -->
+          <div class="agent-chat-panel">
+            <div class="agent-chat-messages" id="agent-chat-logs">
+              <div class="system-message">
+                <i class="fa-solid fa-terminal"></i>
+                <p>CrewAI Agent Collaboration console ready. Input a raw civic incident below to trigger the agentic workflow simulation.</p>
+              </div>
+            </div>
+            
+            <div class="agent-chat-input-row">
+              <input type="text" id="agent-chat-input" placeholder="e.g., Heavy sewage overflow blocking lane in Koramangala 4th block near main road...">
+              <button class="btn-submit" id="btn-agent-submit" style="width: auto; margin-top: 0; padding: 12px 24px; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-play"></i> Run Loop
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW: Emergency Contacts -->
+      <section id="view-contacts" class="view-container">
+        <div class="contacts-header-row" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap;">
+          <p style="color: var(--text-secondary); font-size: 14.5px; max-width: 600px; margin-bottom: 0;">
+            <i class="fa-solid fa-circle-info" style="color: var(--color-primary); margin-right: 6px;"></i>
+            Instant contact details of local public representatives, emergency hospitals, police stations, and municipal ward officers categorized by sector.
+          </p>
+          
+          <select class="filter-select" id="contacts-sector-filter" style="min-width: 200px;">
+            <option value="all">All Sectors</option>
+            <option value="Koramangala">Koramangala</option>
+            <option value="HSR Layout">HSR Layout</option>
+            <option value="MG Road">MG Road</option>
+            <option value="Indiranagar">Indiranagar</option>
+            <option value="Jayanagar">Jayanagar</option>
+            <option value="Hebbal">Hebbal</option>
+          </select>
+        </div>
+        
+        <div class="contacts-grid" id="contacts-cards-grid">
+          <!-- Injected via JS -->
+        </div>
+      </section>
+
+      <!-- VIEW: Impact Dashboard -->
+      <section id="view-impact" class="view-container">
+        <!-- Impact Metric Dials Grid -->
+        <div class="metrics-grid" style="margin-bottom: 32px;">
+          <div class="metric-card primary">
+            <div class="metric-info">
+              <h4>Water Saved</h4>
+              <div class="metric-val" id="impact-water">45,000 L</div>
+              <span style="font-size: 11px; color: var(--color-success); font-weight: 700;">+5,000 L this week</span>
+            </div>
+            <div class="icon-wrapper">
+              <i class="fa-solid fa-droplet"></i>
+            </div>
+          </div>
+          
+          <div class="metric-card success">
+            <div class="metric-info">
+              <h4>Potholes Patched</h4>
+              <div class="metric-val" id="impact-potholes">186 Fixed</div>
+              <span style="font-size: 11px; color: var(--color-success); font-weight: 700;">100% of reported</span>
+            </div>
+            <div class="icon-wrapper">
+              <i class="fa-solid fa-road"></i>
+            </div>
+          </div>
+          
+          <div class="metric-card warning">
+            <div class="metric-info">
+              <h4>Waste Reclaimed</h4>
+              <div class="metric-val" id="impact-waste">14.5 Tons</div>
+              <span style="font-size: 11px; color: var(--color-success); font-weight: 700;">Eco compost processed</span>
+            </div>
+            <div class="icon-wrapper">
+              <i class="fa-solid fa-recycle"></i>
+            </div>
+          </div>
+          
+          <div class="metric-card purple">
+            <div class="metric-info">
+              <h4>Citizen Trust</h4>
+              <div class="metric-val" id="impact-trust">94.2%</div>
+              <span style="font-size: 11px; color: var(--color-primary); font-weight: 700;">Active voter index</span>
+            </div>
+            <div class="icon-wrapper">
+              <i class="fa-solid fa-heart-pulse"></i>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Impact Graph -->
+        <div class="dashboard-grid">
+          <div class="chart-card" style="height: 400px; grid-column: span 2;">
+            <div class="chart-header">
+              <h3>Civic Improvement SLA Response Times (Hours)</h3>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="impactChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <!-- VIEW: Predictive Insights -->
+      <section id="view-insights" class="view-container">
+        <div style="margin-bottom: 24px;">
+          <p style="color: var(--text-secondary); font-size: 14px;">
+            <i class="fa-solid fa-circle-info" style="color: var(--color-primary); margin-right: 6px;"></i>
+            AI-driven predictive models analyzing local weather forecasts, aging infrastructures, and report historical trends to highlight high-risk municipal areas.
+          </p>
+        </div>
+        <div class="predictions-grid" id="predictions-cards-grid">
+          <!-- Rendered via JS -->
+        </div>
+      </section>
+      
+      <!-- VIEW: Rewards & Leaderboard -->
+      <section id="view-rewards" class="view-container">
+        <div class="gamification-grid">
+          <!-- Left: User Profile Dashboard -->
+          <div class="profile-card">
+            <div class="avatar-large" id="rewards-user-avatar">YO</div>
+            <h3 id="rewards-user-name">You</h3>
+            <span class="role-badge">Citizen Responder</span>
+            
+            <div class="profile-stats-grid">
+              <div class="profile-stat">
+                <h4>Streak</h4>
+                <p id="rewards-user-streak">5 Days</p>
+              </div>
+              <div class="profile-stat">
+                <h4>Verified</h4>
+                <p id="rewards-user-verified">12 Issues</p>
+              </div>
+            </div>
+            
+            <div class="profile-xp-progress">
+              <div class="level-text">
+                <span id="rewards-user-level">Level 4</span>
+                <span id="rewards-user-xp">720 / 850 XP</span>
+              </div>
+              <div class="level-bar-container">
+                <div class="level-bar-fill" id="rewards-user-xp-bar" style="width: 84.7%;"></div>
+              </div>
+            </div>
+            
+            <!-- Badges Section -->
+            <div class="badges-section">
+              <h3>Earned Badges</h3>
+              <div class="badges-grid" id="rewards-badges-grid">
+                <!-- Rendered dynamically -->
+              </div>
+            </div>
+          </div>
+          
+          <!-- Right: Leaderboard -->
+          <div class="leaderboard-panel">
+            <h3>Top Citizen Contributors</h3>
+            <div class="leaderboard-table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 60px;">Rank</th>
+                    <th>Citizen</th>
+                    <th>Level</th>
+                    <th>XP</th>
+                    <th>Reports</th>
+                    <th>Verifies</th>
+                  </tr>
+                </thead>
+                <tbody id="leaderboard-tbody">
+                  <!-- Rendered dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <!-- VIEW: Submit Issue Form -->
+      <section id="view-report-issue" class="view-container">
+        <div class="form-card">
+          <form id="submit-issue-form">
+            <div class="form-grid">
+              <div class="form-group full-width">
+                <label for="issue-title">Incident Title *</label>
+                <input type="text" id="issue-title" placeholder="Briefly describe the issue (e.g. Broken water pipe)" required>
+              </div>
+              
+              <div class="form-group full-width">
+                <label for="issue-description">Detailed Description *</label>
+                <textarea id="issue-description" rows="4" placeholder="Provide extra context: severity, size, traffic/safety impact..." required></textarea>
+              </div>
+              
+              <div class="form-group">
+                <label for="issue-category">Category *</label>
+                <select id="issue-category" required>
+                  <!-- Populated by JS -->
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label for="issue-priority">Priority Level *</label>
+                <select id="issue-priority" required>
+                  <option value="low">Low (Non-urgent)</option>
+                  <option value="medium" selected>Medium (Standard)</option>
+                  <option value="high">High (Damaging/Safety Risk)</option>
+                  <option value="critical">Critical (Life Hazard)</option>
+                </select>
+              </div>
+              
+              <!-- Location Validation using Pincode API -->
+              <div class="form-group">
+                <label for="issue-pincode">Area Pincode (Bengaluru/India) *</label>
+                <div class="pincode-input-wrapper">
+                  <input type="text" id="issue-pincode" placeholder="e.g. 560034" maxlength="6" pattern="\d{6}" required>
+                  <button type="button" class="btn-secondary" id="btn-verify-pincode">Verify & Autofill</button>
+                </div>
+                <div class="pincode-loader" id="pincode-loader-text">
+                  <i class="fa-solid fa-spinner fa-spin"></i> Retrieving area details from Public PinCode API...
+                </div>
+                <select class="filter-select post-office-select" id="pincode-area-select">
+                  <!-- Matching locations listed here -->
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label for="issue-address">Full Address / Ward Name *</label>
+                <input type="text" id="issue-address" placeholder="e.g. 5th Cross, Koramangala 4th Block" required>
+              </div>
+              
+              <div class="form-group full-width">
+                <label>Add Media Attachments</label>
+                <div class="image-upload-wrapper" id="simulated-upload-trigger">
+                  <i class="fa-solid fa-cloud-arrow-up"></i>
+                  <p>Drag & drop photos/videos here or click to simulate upload</p>
+                  <span style="font-size: 11px; color: var(--text-muted);">WEBP, JPEG, MP4 formats supported (Max 15MB)</span>
+                </div>
+                
+                <div class="uploaded-preview-container" id="upload-preview-grid">
+                  <!-- Uploaded image thumbnails go here -->
+                </div>
+              </div>
+              
+              <div class="form-group full-width" style="margin-top: 12px;">
+                <button type="submit" class="btn-submit">Submit Incident Report (+100 XP)</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </section>
+    </main>
+  </div>
+  
+  <!-- Detail Slide-out Drawer backdrop -->
+  <div class="drawer-backdrop" id="drawer-overlay"></div>
+  
+  <!-- Detail Slide-out Drawer -->
+  <div class="drawer" id="detail-drawer">
+    <div class="drawer-header">
+      <h3>Incident Details</h3>
+      <button class="drawer-close" id="drawer-close-btn"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    
+    <div class="drawer-content" id="drawer-body">
+      <!-- Injected dynamically by JS -->
+    </div>
+  </div>
+  
+  <!-- Toast Alert System -->
+  <div id="toast-container"></div>
+
+  <!-- CDN scripts -->
+  <!-- Leaflet.js JS for mapping -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" 
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" 
+          crossorigin=""></script>
+          
+  <!-- Chart.js for data visualization -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- Core app JavaScript -->
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
