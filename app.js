@@ -48,6 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initFormHandlers();
   initDrawerHandlers();
   initMobileHandlers();
+  initSpeechRecognition();
   showToast('Welcome back! UrbanGuard AI agent is active.', 'info');
 });
 
@@ -537,41 +538,49 @@ function renderFeed() {
 // ============================================================
 // Interactive Leaflet Map
 // ============================================================
+let googleMarkersList = [];
+
+function getGoogleMapsDarkStyles() {
+  return [
+    { elementType: "geometry", stylers: [{ color: "#0e1224" }] },
+    { elementType: "labels.text.stroke", stylers: [{ color: "#0e1224" }] },
+    { elementType: "labels.text.fill", stylers: [{ color: "#8e8e93" }] },
+    { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#3a3a3c" }] },
+    { featureType: "road", elementType: "geometry", stylers: [{ color: "#191f38" }] },
+    { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#2c385e" }] },
+    { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#8e8e93" }] },
+    { featureType: "water", elementType: "geometry", stylers: [{ color: "#001a35" }] }
+  ];
+}
+
 function initLeafletMap() {
   const container = document.getElementById('map-container');
-  
   if (container.offsetWidth === 0) return;
 
   if (mapInstance) {
-    mapInstance.invalidateSize();
     plotMapMarkers();
     return;
   }
 
-  // Initialize Leaflet map targeting Bangalore coordinates
-  mapInstance = L.map('map-container', {
-    zoomControl: false
-  }).setView([12.9716, 77.5946], 12);
-
-  const mapTileLayers = {
-    dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    light: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-  };
-
-  activeTileLayerInstance = L.tileLayer(mapTileLayers[activeMapLayer], {
-    attribution: activeMapLayer === 'satellite' 
-      ? 'Tiles &copy; Esri &mdash; Source: Esri' 
-      : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    subdomains: 'abcd',
-    maxZoom: 20
-  }).addTo(mapInstance);
-
-  L.control.zoom({ position: 'topright' }).addTo(mapInstance);
+  const bangalore = { lat: 12.9716, lng: 77.5946 };
+  
+  // Initialize Google Map
+  mapInstance = new google.maps.Map(container, {
+    zoom: 12,
+    center: bangalore,
+    styles: activeMapLayer === 'dark' ? getGoogleMapsDarkStyles() : [],
+    mapTypeId: activeMapLayer === 'satellite' ? 'satellite' : 'roadmap',
+    disableDefaultUI: true,
+    zoomControl: true,
+    zoomControlOptions: {
+      position: google.maps.ControlPosition.RIGHT_TOP
+    }
+  });
 
   // Wire Map Control Toggles
   const layerButtons = document.querySelectorAll('.layer-btn');
   layerButtons.forEach(btn => {
+    // Sync initial active state
     if (btn.getAttribute('data-layer') === activeMapLayer) {
       btn.classList.add('active');
     } else {
@@ -581,8 +590,6 @@ function initLeafletMap() {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const targetLayer = btn.getAttribute('data-layer');
-      if (targetLayer === activeMapLayer) return;
-
       activeMapLayer = targetLayer;
       
       layerButtons.forEach(b => {
@@ -593,65 +600,79 @@ function initLeafletMap() {
         }
       });
 
-      if (activeTileLayerInstance) {
-        mapInstance.removeLayer(activeTileLayerInstance);
+      if (activeMapLayer === 'satellite') {
+        mapInstance.setMapTypeId('satellite');
+      } else {
+        mapInstance.setMapTypeId('roadmap');
+        mapInstance.setOptions({
+          styles: activeMapLayer === 'dark' ? getGoogleMapsDarkStyles() : []
+        });
       }
-      
-      activeTileLayerInstance = L.tileLayer(mapTileLayers[activeMapLayer], {
-        attribution: activeMapLayer === 'satellite' 
-          ? 'Tiles &copy; Esri' 
-          : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 20
-      }).addTo(mapInstance);
     });
   });
 
-  markersLayer = L.layerGroup().addTo(mapInstance);
   plotMapMarkers();
 }
 
 function plotMapMarkers() {
-  if (!markersLayer) return;
-  markersLayer.clearLayers();
+  if (!mapInstance) return;
+
+  // Clear existing markers
+  googleMarkersList.forEach(m => m.setMap(null));
+  googleMarkersList = [];
 
   localIssues.forEach(issue => {
     const lat = issue.location.lat;
     const lng = issue.location.lng;
-    
     if (!lat || !lng) return;
 
     const catColor = CATEGORIES[issue.category]?.color || '#3b82f6';
     const statusLabel = STATUSES[issue.status]?.label || issue.status;
 
-    // Standard colored CircleMarker
-    const marker = L.circleMarker([lat, lng], {
-      radius: 8,
+    const markerIcon = {
+      path: "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z",
       fillColor: catColor,
-      color: '#ffffff',
-      weight: 2,
-      opacity: 1,
-      fillOpacity: 0.8
+      fillOpacity: 0.9,
+      strokeWeight: 1.5,
+      strokeColor: '#ffffff',
+      scale: 1.5,
+      anchor: new google.maps.Point(12, 22)
+    };
+
+    const marker = new google.maps.Marker({
+      position: { lat, lng },
+      map: mapInstance,
+      icon: markerIcon,
+      title: issue.title
     });
 
-    // Renders interactive map popup
     const popupContent = `
       <div class="map-popup-content">
-        <h4>${issue.title}</h4>
-        <p><strong>Status:</strong> ${statusLabel}<br><strong>Address:</strong> ${issue.location.address}</p>
+        <h4 style="color: var(--text-primary); font-weight: 700; margin-bottom: 6px;">${issue.title}</h4>
+        <p style="color: var(--text-secondary); font-size:12px;"><strong>Status:</strong> ${statusLabel}<br><strong>Address:</strong> ${issue.location.address}</p>
         <button class="map-popup-btn" id="popup-btn-${issue.id}">View Details</button>
       </div>
     `;
 
-    marker.bindPopup(popupContent);
-    
-    marker.on('popupopen', () => {
-      document.getElementById(`popup-btn-${issue.id}`).addEventListener('click', () => {
-        openIssueDetails(issue.id);
-      });
+    const infowindow = new google.maps.InfoWindow({
+      content: popupContent
     });
 
-    markersLayer.addLayer(marker);
+    marker.addListener("click", () => {
+      infowindow.open(mapInstance, marker);
+    });
+
+    google.maps.event.addListener(infowindow, 'domready', () => {
+      const btn = document.getElementById(`popup-btn-${issue.id}`);
+      if (btn) {
+        btn.addEventListener('click', () => {
+          openIssueDetails(issue.id);
+          infowindow.close();
+        });
+      }
+    });
+
+    googleMarkersList.push(marker);
   });
 }
 
@@ -893,6 +914,7 @@ function initFormHandlers() {
 
     previewGrid.appendChild(thumb);
     showToast('Mock image attached successfully.', 'info');
+    analyzeAttachedImage(chosenImage);
   });
 
   // 3. Form Submission
@@ -1820,4 +1842,176 @@ function createDynamicIssueFromAgent(query) {
   // Refresh feed and map markers dynamically
   renderFeed();
   plotMapMarkers();
+}
+
+
+// ============================================================
+// Multilingual Speech-to-Text Dictation
+// ============================================================
+function initSpeechRecognition() {
+  const searchMicBtn = document.getElementById('btn-voice-search');
+  const descMicBtn = document.getElementById('btn-voice-description');
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (!SpeechRecognition) {
+    if (searchMicBtn) searchMicBtn.style.display = 'none';
+    if (descMicBtn) descMicBtn.style.display = 'none';
+    console.log("Speech recognition not supported in this browser.");
+    return;
+  }
+
+  const setupRecognition = (btn, targetInput) => {
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US'; // Supports multilingual inputs naturally in Chrome
+
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (btn.classList.contains('listening')) {
+        recognition.stop();
+        return;
+      }
+
+      btn.classList.add('listening');
+      showToast('Listening... Speak now.', 'info');
+      recognition.start();
+    });
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      if (targetInput.tagName === 'INPUT' || targetInput.tagName === 'TEXTAREA') {
+        targetInput.value = targetInput.value ? targetInput.value + ' ' + transcript : transcript;
+        targetInput.dispatchEvent(new Event('input'));
+      }
+    };
+
+    recognition.onerror = (err) => {
+      console.error("Speech Recognition Error:", err);
+      btn.classList.remove('listening');
+      showToast(`Voice input error: ${err.error}`, 'warning');
+    };
+
+    recognition.onend = () => {
+      btn.classList.remove('listening');
+    };
+  };
+
+  if (searchMicBtn) {
+    setupRecognition(searchMicBtn, document.getElementById('feed-search-input'));
+  }
+  if (descMicBtn) {
+    setupRecognition(descMicBtn, document.getElementById('issue-description'));
+  }
+}
+
+// ============================================================
+// Gemini Vision Multimodal Auto-Fill
+// ============================================================
+async function analyzeAttachedImage(chosenImage) {
+  const apiKey = localStorage.getItem('urbanguard-gemini-key');
+  if (!apiKey) {
+    simulateFormAutoFill(chosenImage);
+    return;
+  }
+
+  showToast('Gemini Vision is analyzing visual markers in the photo...', 'info');
+
+  const titleInput = document.getElementById('issue-title');
+  const descInput = document.getElementById('issue-description');
+  const categorySelect = document.getElementById('issue-category');
+  const prioritySelect = document.getElementById('issue-priority');
+
+  titleInput.value = 'Analyzing image...';
+  descInput.value = 'Gemini Vision is scanning objects, classifying hazard type, and drafting report...';
+
+  try {
+    const responseBlob = await fetch(`./images/${chosenImage}`);
+    const blob = await responseBlob.blob();
+
+    const base64Data = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+
+    const prompt = `Analyze this civic hazard image. Classify its category and severity, then provide a JSON block outputting the fields.
+Return ONLY a valid JSON object in a markdown code block (i.e. between \`\`\`json and \`\`\`) with these keys:
+{
+  "title": "Short title describing the issue (e.g. Broken water pipe on street)",
+  "category": "lowercase category key (one of: pothole, water_leak, streetlight, garbage, drainage, electricity, sidewalk, graffiti, noise, construction, tree_hazard, traffic)",
+  "priority": "one of: low, medium, high, critical",
+  "description": "Detailed description explaining what is shown in the image and its safety impact"
+}`;
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { text: prompt },
+            {
+              inlineData: {
+                mimeType: "image/jpeg",
+                data: base64Data
+              }
+            }
+          ]
+        }]
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const resData = await response.json();
+    const responseText = resData.candidates[0].content.parts[0].text;
+
+    const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/) || responseText.match(/({[\s\S]*?})/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[1]);
+      titleInput.value = parsed.title || '';
+      descInput.value = parsed.description || '';
+      if (parsed.category) categorySelect.value = parsed.category;
+      if (parsed.priority) prioritySelect.value = parsed.priority;
+
+      showToast('Gemini Vision auto-filled the form successfully!', 'success');
+    } else {
+      throw new Error('Failed to parse JSON response');
+    }
+
+  } catch (error) {
+    console.error('Gemini Vision Error:', error);
+    showToast(`Vision analysis failed: ${error.message}. Running offline mock auto-fill.`, 'warning');
+    simulateFormAutoFill(chosenImage);
+  }
+}
+
+function simulateFormAutoFill(chosenImage) {
+  const titleInput = document.getElementById('issue-title');
+  const descInput = document.getElementById('issue-description');
+  const categorySelect = document.getElementById('issue-category');
+  const prioritySelect = document.getElementById('issue-priority');
+
+  if (chosenImage.includes('pothole')) {
+    titleInput.value = 'Deep pothole blocking main lane';
+    descInput.value = 'A large pothole has formed in the middle of the road. It has sharp edges and poses a major puncture and collision hazard for two-wheelers.';
+    categorySelect.value = 'pothole';
+    prioritySelect.value = 'medium';
+  } else if (chosenImage.includes('water')) {
+    titleInput.value = 'Water main line burst flooding street';
+    descInput.value = 'A pipeline burst has occurred, causing water to gush out under high pressure and flood the road, disrupting traffic.';
+    categorySelect.value = 'water_leak';
+    prioritySelect.value = 'high';
+  } else {
+    titleInput.value = 'Exposed sparking power line';
+    descInput.value = 'An electrical line has broken and is hanging low near the sidewalk, sparking occasionally and posing an immediate electrocution hazard.';
+    categorySelect.value = 'electricity';
+    prioritySelect.value = 'critical';
+  }
+  showToast('Offline mock auto-filled parameters.', 'info');
 }

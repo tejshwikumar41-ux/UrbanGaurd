@@ -11,10 +11,8 @@
   <!-- FontAwesome for Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
-  <!-- Leaflet.js CSS for Map -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
-        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
-        crossorigin="" />
+  <!-- Google Maps JavaScript API -->
+  <script src="https://maps.googleapis.com/maps/api/js?v=weekly"></script>
 </head>
 <body>
 
@@ -191,9 +189,12 @@
       <!-- VIEW: Report Feed -->
       <section id="view-feed" class="view-container">
         <div class="feed-header">
-          <div class="search-bar">
-            <i class="fa-solid fa-magnifying-glass"></i>
-            <input type="text" id="feed-search-input" placeholder="Search issues, zones, descriptions...">
+          <div class="search-bar" style="display: flex; gap: 8px; align-items: center; max-width: 450px; width: 100%;">
+            <div style="position: relative; flex-grow: 1;">
+              <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 14px; top: 14px; color: var(--text-muted);"></i>
+              <input type="text" id="feed-search-input" placeholder="Search issues, zones, descriptions..." style="width: 100%; padding-left: 40px;">
+            </div>
+            <button type="button" class="voice-mic-btn" id="btn-voice-search" title="Voice Search (Hindi/English)"><i class="fa-solid fa-microphone"></i></button>
           </div>
           
           <div class="filters-wrapper">
@@ -486,7 +487,10 @@
               </div>
               
               <div class="form-group full-width">
-                <label for="issue-description">Detailed Description *</label>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <label for="issue-description">Detailed Description *</label>
+                  <button type="button" class="voice-mic-btn form-mic" id="btn-voice-description" title="Speak description (Hindi/English)"><i class="fa-solid fa-microphone"></i> Speak Description</button>
+                </div>
                 <textarea id="issue-description" rows="4" placeholder="Provide extra context: severity, size, traffic/safety impact..." required></textarea>
               </div>
               
@@ -568,11 +572,7 @@
   <!-- Toast Alert System -->
   <div id="toast-container"></div>
 
-  <!-- CDN scripts -->
-  <!-- Leaflet.js JS for mapping -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" 
-          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" 
-          crossorigin=""></script>
+  <!-- Mapping CDN (Google Maps API loaded in head) -->
           
   <!-- Chart.js for data visualization -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

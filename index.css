@@ -2213,3 +2213,87 @@ tr:hover td {
   text-align: center;
   color: var(--text-muted);
 }
+
+/* ============================================================
+   Voice Microphone Dictation Styles
+   ============================================================ */
+.voice-mic-btn {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--card-border);
+  color: var(--text-secondary);
+  width: 38px;
+  height: 38px;
+  border-radius: var(--border-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 15px;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-fast);
+}
+
+.voice-mic-btn:hover {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+  transform: translateY(-1px) scale(1.05);
+}
+
+.voice-mic-btn.listening {
+  background-color: rgba(255, 59, 48, 0.15) !important;
+  color: var(--color-danger) !important;
+  border-color: var(--color-danger) !important;
+  animation: micPulse 1.2s infinite alternate;
+}
+
+.voice-mic-btn.form-mic {
+  width: auto;
+  height: auto;
+  padding: 6px 12px;
+  font-size: 11.5px;
+  font-weight: 700;
+  gap: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+@keyframes micPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.4);
+    transform: scale(1);
+  }
+  100% {
+    box-shadow: 0 0 10px 4px rgba(255, 59, 48, 0.2);
+    transform: scale(1.05);
+  }
+}
+
+/* ============================================================
+   Google Maps Styling Overrides
+   ============================================================ */
+.gm-style-iw-c {
+  background-color: rgba(14, 18, 36, 0.85) !important;
+  backdrop-filter: blur(15px) !important;
+  border: 1px solid var(--card-border) !important;
+  border-radius: var(--border-radius-md) !important;
+  box-shadow: var(--shadow-lg) !important;
+  padding: 12px !important;
+}
+
+.light-theme .gm-style-iw-c {
+  background-color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.gm-style-iw-d {
+  overflow: hidden !important;
+}
+
+.gm-style-iw-tc::after {
+  background-color: rgba(14, 18, 36, 0.85) !important;
+  border-right: 1px solid var(--card-border) !important;
+  border-bottom: 1px solid var(--card-border) !important;
+}
+
+.light-theme .gm-style-iw-tc::after {
+  background-color: rgba(255, 255, 255, 0.85) !important;
+}
