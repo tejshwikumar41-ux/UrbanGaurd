@@ -1031,6 +1031,18 @@ function openIssueDetails(issueId) {
   const drawer = document.getElementById('detail-drawer');
   const body = document.getElementById('drawer-body');
 
+  // Re-bind top-right close cross button and overlay to guarantee close actions always work
+  const closeBtn = document.getElementById('drawer-close-btn');
+  const closeDrawer = () => {
+    drawer.classList.remove('active');
+    overlay.classList.remove('active');
+    selectedIssue = null;
+  };
+  if (closeBtn) {
+    closeBtn.onclick = closeDrawer;
+  }
+  overlay.onclick = closeDrawer;
+
   const catInfo = CATEGORIES[issue.category] || { label: issue.category, icon: 'fa-triangle-exclamation', color: '#6b7280' };
   const statInfo = STATUSES[issue.status] || { label: issue.status, color: '#6b7280', icon: 'fa-flag' };
 
