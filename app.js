@@ -84,6 +84,12 @@ function initTheme() {
     if (activeView === 'dashboard') {
       renderDashboard();
     }
+    // Rerender Google Maps theme dynamically
+    if (activeView === 'map' && mapInstance && typeof google !== 'undefined') {
+      mapInstance.setOptions({
+        styles: isLightTheme() ? [] : getGoogleMapsDarkStyles()
+      });
+    }
   });
 }
 
@@ -1400,6 +1406,49 @@ function renderImpactDashboard() {
 // ============================================================
 // CrewAI / LangGraph Agent Crew Console Logic
 // ============================================================
+// ============================================================
+// Google Gemini API Gateway (with version fallback)
+// ============================================================
+async function callGeminiApi(apiKey, prompt, base64Data = null) {
+  const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+  let lastError = null;
+
+  for (const model of models) {
+    try {
+      const parts = [{ text: prompt }];
+      if (base64Data) {
+        parts.push({
+          inlineData: {
+            mimeType: "image/jpeg",
+            data: base64Data
+          }
+        });
+      }
+
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts }]
+        })
+      });
+
+      if (response.ok) {
+        const resData = await response.json();
+        if (resData.candidates && resData.candidates.length > 0) {
+          return resData.candidates[0].content.parts[0].text;
+        }
+      } else {
+        console.warn(`Model ${model} returned HTTP ${response.status}`);
+      }
+    } catch (err) {
+      console.warn(`Model ${model} request error:`, err);
+      lastError = err;
+    }
+  }
+  throw new Error(lastError ? lastError.message : "Failed to generate content from all Gemini models.");
+}
+
 function initAgentCrewConsole() {
   const btn = document.getElementById('btn-agent-submit');
   const input = document.getElementById('agent-chat-input');
@@ -1480,25 +1529,6 @@ async function runAgentCrewSimulation(query) {
   showToast('Live agent crew loop started via Gemini API...', 'info');
 
   try {
-    // Helper to call Gemini
-    const callGemini = async (prompt) => {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }]
-        })
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP Error ${response.status}`);
-      }
-      const resData = await response.json();
-      if (!resData.candidates || resData.candidates.length === 0) {
-        throw new Error('No response candidates from Gemini API');
-      }
-      return resData.candidates[0].content.parts[0].text;
-    };
-
     // Step 2: Classifier Agent
     catCard.classList.add('active');
     catCard.querySelector('.agent-status-dot').className = 'agent-status-dot active';
@@ -1533,7 +1563,7 @@ Available categories are:
 
 Please output a conversational response. State the category you classified the incident as, the severity index (1-5), and a brief explanation of why, concluding with the exact string: "Forwarding parameters to SLA Dispatcher..."`;
 
-    const catResponse = await callGemini(catPrompt);
+    const catResponse = await callGeminiApi(apiKey, catPrompt);
     document.getElementById('live-cat').innerText = catResponse;
 
     catCard.classList.remove('active');
@@ -1563,7 +1593,7 @@ The Classifier Agent provided this analysis:
 
 Please output a conversational response. State the SLA response window, the ward mapping (e.g. Koramangala, HSR Layout, MG Road, Indiranagar, Jayanagar, Hebbal based on any location words in the user query, defaulting to Koramangala if none match), and name the official contact paged (referring to a BBMP Ward Officer or BESCOM or BWSSB). Conclude with the exact string: "SLA scheduled. Passing to Moderator Agent..."`;
 
-    const dispResponse = await callGemini(dispPrompt);
+    const dispResponse = await callGeminiApi(apiKey, dispPrompt);
     document.getElementById('live-disp').innerText = dispResponse;
 
     dispCard.classList.remove('active');
@@ -1601,7 +1631,7 @@ Then, conclude by outputting a JSON object enclosed in a markdown code block (i.
   "address": "Estimated address or ward name"
 }`;
 
-    const modResponse = await callGemini(modPrompt);
+    const modResponse = await callGeminiApi(apiKey, modPrompt);
     document.getElementById('live-mod').innerText = modResponse;
 
     modCard.classList.remove('active');
@@ -1984,30 +2014,7 @@ Return ONLY a valid JSON object in a markdown code block (i.e. between \`\`\`jso
   "description": "Detailed description explaining what is shown in the image and its safety impact"
 }`;
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: prompt },
-            {
-              inlineData: {
-                mimeType: "image/jpeg",
-                data: base64Data
-              }
-            }
-          ]
-        }]
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const resData = await response.json();
-    const responseText = resData.candidates[0].content.parts[0].text;
+    const responseText = await callGeminiApi(apiKey, prompt, base64Data);
 
     const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/) || responseText.match(/({[\s\S]*?})/);
     if (jsonMatch) {
