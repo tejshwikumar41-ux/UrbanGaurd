@@ -562,6 +562,21 @@ function initLeafletMap() {
     return;
   }
 
+  // Safe guard: check if Google Maps JS script loaded successfully
+  if (typeof google === 'undefined' || !google.maps) {
+    container.innerHTML = `
+      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 20px; text-align: center; color: var(--text-secondary); background: rgba(14, 18, 36, 0.4); border: 1px solid var(--card-border); border-radius: var(--border-radius-lg);">
+        <i class="fa-solid fa-map-location-dot" style="font-size: 40px; color: var(--color-danger); margin-bottom: 12px; filter: drop-shadow(0 0 10px rgba(255, 59, 48, 0.4));"></i>
+        <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 6px;">Google Maps API Not Loaded</h3>
+        <p style="font-size: 13px; color: var(--text-muted); max-width: 400px; line-height: 1.4;">
+          The Google Maps library is not available. Please verify your internet connection or check your adblocker settings. The rest of the platform features remain active.
+        </p>
+      </div>
+    `;
+    console.warn("Google Maps JS API is not defined. Skipping map initialization.");
+    return;
+  }
+
   const bangalore = { lat: 12.9716, lng: 77.5946 };
   
   // Initialize Google Map
@@ -1431,6 +1446,12 @@ async function runAgentCrewSimulation(query) {
   const catCard = document.getElementById('crew-agent-cat');
   const dispCard = document.getElementById('crew-agent-disp');
   const modCard = document.getElementById('crew-agent-mod');
+  
+  const submitBtn = document.getElementById('btn-agent-submit');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Running...`;
+  }
 
   // Reset statuses
   [catCard, dispCard, modCard].forEach(card => {
@@ -1654,6 +1675,11 @@ Then, conclude by outputting a JSON object enclosed in a markdown code block (i.
       createDynamicIssueFromAgent(query);
     }
     
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `<i class="fa-solid fa-play"></i> Run Loop`;
+    }
+    
     awardXP(100);
     logs.scrollTop = logs.scrollHeight;
 
@@ -1675,6 +1701,11 @@ Then, conclude by outputting a JSON object enclosed in a markdown code block (i.
 }
 
 function runSimulatedAgentLoop(query, logs, catCard, dispCard, modCard) {
+  const submitBtn = document.getElementById('btn-agent-submit');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Running...`;
+  }
   // 2. Trigger Classifier Agent
   setTimeout(() => {
     catCard.classList.add('active');
@@ -1772,6 +1803,13 @@ function runSimulatedAgentLoop(query, logs, catCard, dispCard, modCard) {
                 // Create a dynamic issue in feed
                 createDynamicIssueFromAgent(query);
                 awardXP(100);
+                
+                // Re-enable button
+                const finalBtn = document.getElementById('btn-agent-submit');
+                if (finalBtn) {
+                  finalBtn.disabled = false;
+                  finalBtn.innerHTML = `<i class="fa-solid fa-play"></i> Run Loop`;
+                }
               }, 1000);
 
             }, 1500);
